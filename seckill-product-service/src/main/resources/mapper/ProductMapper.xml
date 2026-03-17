@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.seckill.product.mapper.ProductMapper">
+
+    <resultMap id="ProductResultMap" type="com.seckill.product.entity.Product">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="price" column="price"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="ProductResultMap">
+        SELECT id, name, description, price, created_at
+        FROM product
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectList" resultMap="ProductResultMap">
+        SELECT id, name, description, price, created_at
+        FROM product
+        ORDER BY id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO product (name, description, price)
+        VALUES (#{name}, #{description}, #{price})
+    </insert>
+</mapper>

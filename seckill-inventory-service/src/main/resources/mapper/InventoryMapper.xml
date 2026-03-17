@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.seckill.inventory.mapper.InventoryMapper">
+
+    <resultMap id="InventoryResultMap" type="com.seckill.inventory.entity.Inventory">
+        <id property="productId" column="product_id"/>
+        <result property="stock" column="stock"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectByProductId" resultMap="InventoryResultMap">
+        SELECT product_id, stock, updated_at
+        FROM inventory
+        WHERE product_id = #{productId}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO inventory (product_id, stock)
+        VALUES (#{productId}, #{stock})
+    </insert>
+
+    <update id="deductStock">
+        UPDATE inventory
+        SET stock = stock - #{quantity}
+        WHERE product_id = #{productId} AND stock >= #{quantity}
+    </update>
+</mapper>

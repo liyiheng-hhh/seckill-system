@@ -69,3 +69,75 @@
 中间件：Kafka（消息队列，用于服务间异步通信，如订单创建后通知库存）；Spring Cloud（微服务治理，包括Gateway、Eureka注册中心）；Docker & Kubernetes（容器化和部署）。
 
 其他：JWT（认证）、Lombok（简化代码）、Swagger（API文档）。选型理由：Spring生态完整，易扩展；Redis+Kafka处理秒杀高并发（QPS>1000）；MySQL确保数据一致性。
+
+---
+
+## 快速启动
+
+### 环境要求
+
+- JDK 17+
+- Maven 3.8+
+- MySQL 8.0+
+
+### 1. 初始化数据库
+
+```bash
+mysql -u root -p < scripts/init.sql
+```
+
+或手动执行 `scripts/init.sql` 中的 SQL。默认数据库名 `seckill`，请根据 `application.yml` 修改连接信息（用户名/密码）。
+
+### 2. 编译项目
+
+```bash
+mvn clean install
+```
+
+### 3. 启动服务
+
+各服务独立运行，端口如下：
+
+| 服务 | 端口 | 启动命令 |
+|------|------|----------|
+| 用户服务 | 8081 | `mvn -pl seckill-user-service spring-boot:run` |
+| 商品服务 | 8082 | `mvn -pl seckill-product-service spring-boot:run` |
+| 订单服务 | 8083 | `mvn -pl seckill-order-service spring-boot:run` |
+| 库存服务 | 8084 | `mvn -pl seckill-inventory-service spring-boot:run` |
+
+### 4. API 文档
+
+启动用户服务后访问：http://localhost:8081/swagger-ui.html
+
+---
+
+## 用户注册登录 API 示例
+
+### 注册
+
+```bash
+curl -X POST http://localhost:8081/users/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"123456","email":"test@example.com"}'
+```
+
+响应示例：`{"userId":1,"message":"注册成功"}`
+
+### 登录
+
+```bash
+curl -X POST http://localhost:8081/users/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"123456"}'
+```
+
+响应示例：`{"token":"eyJhbGciOiJIUzI1NiJ9...","userId":1}`
+
+### 获取用户信息（需认证）
+
+```bash
+curl -X GET http://localhost:8081/users/1 \
+  -H "Authorization: Bearer <登录返回的token>"
+```
+
+响应示例：`{"username":"testuser","email":"test@example.com"}`
