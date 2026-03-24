@@ -70,6 +70,18 @@
 
 其他：JWT（认证）、Lombok（简化代码）、Swagger（API文档）。选型理由：Spring生态完整，易扩展；Redis+Kafka处理秒杀高并发（QPS>1000）；MySQL确保数据一致性。
 
+### 新增能力实现
+
+- 分布式缓存（`seckill-product-service`）
+  - 商品详情页接入 Redis 缓存（Cache Aside）
+  - 缓存穿透：对不存在商品写入短 TTL 空值
+  - 缓存击穿：热点 key 使用互斥锁重建缓存
+  - 缓存雪崩：缓存 TTL 增加随机抖动
+- 读写分离（`seckill-product-service`）
+  - 配置 `master/slave` 双数据源
+  - 写请求默认走主库
+  - 读请求通过 `@ReadOnlyDataSource` 路由到从库
+
 ---
 
 ## 快速启动
@@ -79,6 +91,7 @@
 - JDK 17+
 - Maven 3.8+
 - MySQL 8.0+
+- Redis 6.0+
 
 ### 1. 初始化数据库
 
@@ -105,9 +118,30 @@ mvn clean install
 | 订单服务 | 8083 | `mvn -pl seckill-order-service spring-boot:run` |
 | 库存服务 | 8084 | `mvn -pl seckill-inventory-service spring-boot:run` |
 
-### 4. API 文档
+### 4. 启动 Redis（本地示例）
+
+```bash
+docker run -d --name seckill-redis -p 6379:6379 redis:7
+```
+
+### 5. API 文档
 
 启动用户服务后访问：http://localhost:8081/swagger-ui.html
+
+---
+
+## 分布式缓存与读写分离配置说明
+
+`seckill-product-service/src/main/resources/application.yml` 中已提供如下配置：
+
+- `spring.datasource.master`：主库连接（写）
+- `spring.datasource.slave`：从库连接（读）
+- `spring.data.redis`：Redis 连接
+- `cache.product.ttl-seconds`：商品缓存基础 TTL
+- `cache.product.null-ttl-seconds`：空值缓存 TTL（防穿透）
+- `cache.product.lock-ttl-seconds`：互斥锁 TTL（防击穿）
+
+说明：若你当前只有单库环境，可先让 `master` 与 `slave` 都指向同一个 MySQL 实例，代码层面已经具备读写分离路由能力。
 
 ---
 
