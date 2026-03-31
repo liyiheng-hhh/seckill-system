@@ -8,6 +8,8 @@ import org.apache.ibatis.annotations.Param;
 public interface OrderMapper {
 
     Order selectById(@Param("id") Long id);
+    
+    Order selectByUserAndProduct(@Param("userId") Long userId, @Param("productId") Long productId);
 
     int insert(Order order);
 

@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS `order` (
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user_id (user_id),
+    UNIQUE KEY uk_user_product (user_id, product_id),
     FOREIGN KEY (user_id) REFERENCES user(id),
     FOREIGN KEY (product_id) REFERENCES product(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单表';

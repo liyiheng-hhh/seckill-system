@@ -81,6 +81,10 @@
   - 配置 `master/slave` 双数据源
   - 写请求默认走主库
   - 读请求通过 `@ReadOnlyDataSource` 路由到从库
+- 消息队列秒杀下单（`seckill-inventory-service` + `seckill-order-service`）
+  - 秒杀请求先在 Redis 预扣库存，再异步投递 Kafka 下单消息
+  - 防重复下单：Redis 幂等键 `userId+productId` 与数据库唯一键双重保障
+  - 最终一致性：订单服务消费 Kafka 后异步落库，消费重试不会重复插入
 
 ---
 
@@ -92,6 +96,7 @@
 - Maven 3.8+
 - MySQL 8.0+
 - Redis 6.0+
+- Kafka 3.x+
 
 ### 1. 初始化数据库
 
@@ -127,6 +132,50 @@ docker run -d --name seckill-redis -p 6379:6379 redis:7
 ### 5. API 文档
 
 启动用户服务后访问：http://localhost:8081/swagger-ui.html
+
+---
+
+## 秒杀消息队列链路说明
+
+### 1. 启动 Kafka（本地 Docker 示例）
+
+```bash
+docker run -d --name zookeeper -p 2181:2181 zookeeper:3.8
+docker run -d --name kafka -p 9092:9092 \
+  -e KAFKA_ZOOKEEPER_CONNECT=host.docker.internal:2181 \
+  -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 \
+  -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092 \
+  confluentinc/cp-kafka:7.5.0
+```
+
+### 2. 秒杀接口
+
+```bash
+curl -X POST http://localhost:8084/inventory/seckill/1 \
+  -H "Content-Type: application/json" \
+  -d '{"userId":1001,"quantity":1}'
+```
+
+成功示例：`{"success":true,"message":"抢购成功，订单创建中"}`
+
+### 3. 幂等与一致性
+
+- 相同 `userId + productId` 重复请求会被 Redis 幂等键拦截
+- 订单表有唯一索引 `uk_user_product (user_id, product_id)`，防止消费重试重复建单
+- 消息消费后可通过 `GET /orders/{orderId}` 或业务查询接口确认订单状态
+
+---
+
+## 分库分表（选做）建议
+
+当前仓库未接入 ShardingSphere。若要实现“按用户ID分库、按订单ID分表”，建议以下演进：
+
+1. 在 `seckill-order-service` 引入 `shardingsphere-jdbc-core-spring-boot-starter`
+2. 配置 `ds_0/ds_1` 双库与 `order_0/order_1` 分表规则
+3. 以 `user_id` 作为分库键、`id` 作为分表键
+4. 保持现有 MyBatis Mapper 不变，由 ShardingSphere 完成路由
+
+这样可在不改业务代码的前提下完成横向扩展。
 
 ---
 

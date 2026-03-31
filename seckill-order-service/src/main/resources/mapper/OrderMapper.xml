@@ -18,6 +18,13 @@
         WHERE id = #{id}
     </select>
 
+    <select id="selectByUserAndProduct" resultMap="OrderResultMap">
+        SELECT id, user_id, product_id, quantity, status, created_at
+        FROM `order`
+        WHERE user_id = #{userId} AND product_id = #{productId}
+        LIMIT 1
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO `order` (user_id, product_id, quantity, status)
         VALUES (#{userId}, #{productId}, #{quantity}, #{status})

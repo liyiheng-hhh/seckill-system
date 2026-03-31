@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,5 +35,13 @@ public class InventoryController {
     public Map<String, Object> deductStock(@PathVariable Long productId, @RequestBody Map<String, Integer> body) {
         int quantity = body.getOrDefault("quantity", 1);
         return inventoryService.deductStock(productId, quantity);
+    }
+
+    @Operation(summary = "秒杀下单")
+    @PostMapping("/seckill/{productId}")
+    public Map<String, Object> seckill(@PathVariable Long productId, @RequestBody Map<String, Object> body) {
+        Long userId = ((Number) body.get("userId")).longValue();
+        int quantity = body.get("quantity") == null ? 1 : ((Number) body.get("quantity")).intValue();
+        return inventoryService.seckill(userId, productId, quantity);
     }
 }
