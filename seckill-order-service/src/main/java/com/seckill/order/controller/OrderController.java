@@ -4,6 +4,8 @@ import com.seckill.order.entity.Order;
 import com.seckill.order.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,9 +46,15 @@ public class OrderController {
 
     @Operation(summary = "支付订单")
     @PutMapping("/{orderId}/pay")
-    public Map<String, String> payOrder(@PathVariable Long orderId, @RequestBody Map<String, String> body) {
+    public ResponseEntity<Map<String, String>> payOrder(
+            @PathVariable Long orderId,
+            @RequestBody Map<String, String> body) {
         String paymentMethod = body.getOrDefault("paymentMethod", "default");
-        orderService.payOrder(orderId, paymentMethod);
-        return Map.of("status", "PAID");
+        boolean paid = orderService.payOrder(orderId, paymentMethod);
+        if (!paid) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "订单不存在或已支付，幂等拒绝重复支付"));
+        }
+        return ResponseEntity.ok(Map.of("status", "PAID"));
     }
 }

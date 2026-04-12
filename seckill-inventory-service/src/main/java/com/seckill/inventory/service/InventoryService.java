@@ -2,6 +2,7 @@ package com.seckill.inventory.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.seckill.inventory.dto.OrderInventorySettleMessage;
 import com.seckill.inventory.entity.Inventory;
 import com.seckill.inventory.dto.SeckillOrderMessage;
 import com.seckill.inventory.mapper.InventoryMapper;
@@ -19,6 +20,8 @@ public class InventoryService {
 
     private static final String STOCK_KEY_PREFIX = "seckill:stock:";
     private static final String ORDER_USER_KEY_PREFIX = "seckill:order:user:";
+    /** 库存库最终扣减完成标记（防 Kafka 重复投递） */
+    private static final String SETTLE_DONE_KEY_PREFIX = "seckill:settle:done:";
 
     private final InventoryMapper inventoryMapper;
     private final StringRedisTemplate stringRedisTemplate;
@@ -116,5 +119,25 @@ public class InventoryService {
     private void rollbackReservation(String stockKey, int quantity, String userOrderKey) {
         stringRedisTemplate.opsForValue().increment(stockKey, quantity);
         stringRedisTemplate.delete(userOrderKey);
+    }
+
+    /**
+     * 订单已在订单库落库后，对库存库执行最终扣减（与 Redis 预扣对齐，消息幂等）
+     */
+    public void settleInventoryAfterOrderCreated(OrderInventorySettleMessage message) {
+        if (message == null || message.getOrderId() == null) {
+            return;
+        }
+        String doneKey = SETTLE_DONE_KEY_PREFIX + message.getOrderId();
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(doneKey))) {
+            return;
+        }
+        int qty = message.getQuantity() == null ? 1 : message.getQuantity();
+        int rows = inventoryMapper.deductStock(message.getProductId(), qty);
+        if (rows <= 0) {
+            throw new IllegalStateException(
+                    "库存库扣减失败，可能数据不一致，请人工核对 orderId=" + message.getOrderId());
+        }
+        stringRedisTemplate.opsForValue().set(doneKey, "1", Duration.ofDays(7));
     }
 }

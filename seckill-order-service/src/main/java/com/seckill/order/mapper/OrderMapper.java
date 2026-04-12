@@ -14,4 +14,9 @@ public interface OrderMapper {
     int insert(Order order);
 
     int updateStatus(@Param("id") Long id, @Param("status") String status);
+
+    /**
+     * 仅当当前状态为 PENDING 时更新（支付幂等）
+     */
+    int updateStatusIfPending(@Param("id") Long id, @Param("status") String status);
 }

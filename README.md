@@ -85,6 +85,10 @@
   - 秒杀请求先在 Redis 预扣库存，再异步投递 Kafka 下单消息
   - 防重复下单：Redis 幂等键 `userId+productId` 与数据库唯一键双重保障
   - 最终一致性：订单服务消费 Kafka 后异步落库，消费重试不会重复插入
+- 事务与跨服务一致性（消息最终一致性）
+  - 订单库 `seckill_order` 与库存库 `seckill_inventory` 物理分离，模拟微服务各库
+  - 秒杀链路：Redis 预扣（防超卖/限购）→ Kafka 创建订单 → 再发 Kafka `order-inventory-settle` → 库存服务对 MySQL 做最终扣减；Redis `seckill:settle:done:{orderId}` 防重复结算
+  - 支付：`PUT /orders/{id}/pay` 使用 `WHERE status='PENDING'` 条件更新，实现支付幂等与「支付 + 状态」单库原子一致
 
 ---
 
@@ -104,7 +108,7 @@
 mysql -u root -p < scripts/init.sql
 ```
 
-或手动执行 `scripts/init.sql` 中的 SQL。默认数据库名 `seckill`，请根据 `application.yml` 修改连接信息（用户名/密码）。
+或手动执行 `scripts/init.sql` 中的 SQL。脚本会创建三个库：`seckill`（用户/商品）、`seckill_inventory`（库存）、`seckill_order`（订单）。请根据各服务 `application.yml` 修改连接信息（用户名/密码）。
 
 ### 2. 编译项目
 
@@ -162,7 +166,12 @@ curl -X POST http://localhost:8084/inventory/seckill/1 \
 
 - 相同 `userId + productId` 重复请求会被 Redis 幂等键拦截
 - 订单表有唯一索引 `uk_user_product (user_id, product_id)`，防止消费重试重复建单
+- 订单创建成功后发往 `seckill-order-inventory-settle`，库存服务幂等落库扣减；重复投递同一 `orderId` 不会重复扣减
 - 消息消费后可通过 `GET /orders/{orderId}` 或业务查询接口确认订单状态
+
+### 4. Kafka Topic
+
+需存在（或开启自动创建）：`seckill-order-create`、`seckill-order-inventory-settle`。
 
 ---
 

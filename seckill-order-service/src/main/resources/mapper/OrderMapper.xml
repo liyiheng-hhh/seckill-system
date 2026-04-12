@@ -33,4 +33,8 @@
     <update id="updateStatus">
         UPDATE `order` SET status = #{status} WHERE id = #{id}
     </update>
+
+    <update id="updateStatusIfPending">
+        UPDATE `order` SET status = #{status} WHERE id = #{id} AND status = 'PENDING'
+    </update>
 </mapper>
